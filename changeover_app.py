@@ -56,7 +56,7 @@ for idx, row in df.iterrows():
             'machine': prev_machine,
             'from product': from_part,
             'to product': to_part,
-            'changeover duration (min)': accumulated_duration,
+            'changeover duration (hr)': round(accumulated_duration / 60, 1),
             'date': last_date,
             'shift': last_shift
         })
@@ -75,7 +75,7 @@ if accumulated_duration > 0:
         'machine': prev_machine,
         'from product': from_part,
         'to product': to_part,
-        'changeover duration (min)': accumulated_duration,
+        'changeover duration (hr)': round(accumulated_duration / 60, 1),
         'date': last_date,
         'shift': last_shift
     })
@@ -88,13 +88,13 @@ summary_df['hover_info'] = (
     "<br>To: " + summary_df['to product'].astype(str) +
     "<br>Date: " + summary_df['date'].astype(str) +
     "<br>Shift: " + summary_df['shift'].astype(str) +
-    "<br>Duration: " + summary_df['changeover duration (min)'].astype(str) + " min"
+    "<br>Duration: " + summary_df['changeover duration (hr)'].astype(str) + " hr"
 )
 
 # Monthly summary (in hours)
 monthly_summary = summary_df.groupby(['month', 'machine'], as_index=False).agg(
-    total_changeover_time_hr=('changeover duration (min)', lambda x: round(x.sum() / 60, 2)),
-    average_changeover_time_hr=('changeover duration (min)', lambda x: round(x.mean() / 60, 2))
+    total_changeover_time_hr=('changeover duration (hr)', 'sum'),
+    average_changeover_time_hr=('changeover duration (hr)', 'mean')
 )
 
 # ---------- STREAMLIT APP SECTION ----------
@@ -129,7 +129,7 @@ fig_total = px.bar(
     x="machine", y="total_changeover_time_hr",
     color="machine",
     title="Total Changeover Time per Machine",
-    text="total_changeover_time_hr",
+    text=filtered_monthly['total_changeover_time_hr'].round(1).astype(str) + " hr",
     hover_name="machine",
     hover_data={"total_changeover_time_hr": True}
 )
@@ -141,7 +141,7 @@ fig_avg = px.bar(
     x="machine", y="average_changeover_time_hr",
     color="machine",
     title="Average Changeover Time per Machine",
-    text="average_changeover_time_hr",
+    text=filtered_monthly['average_changeover_time_hr'].round(1).astype(str) + " hr",
     hover_name="machine",
     hover_data={"average_changeover_time_hr": True}
 )
@@ -151,10 +151,10 @@ st.plotly_chart(fig_avg, use_container_width=True)
 st.subheader("🔍 Product-Level Changeovers")
 fig_product = px.bar(
     filtered_summary,
-    x="machine", y="changeover duration (min)",
+    x="machine", y="changeover duration (hr)",
     color="machine",
     title="Changeover Durations by Product Change",
-    text="changeover duration (min)",
+    text=filtered_summary['changeover duration (hr)'].round(1).astype(str) + " hr",
     hover_name="machine",
     hover_data={"hover_info": True},
 )
