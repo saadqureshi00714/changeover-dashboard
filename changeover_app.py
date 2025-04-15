@@ -5,8 +5,6 @@ import os
 
 # ---------- DATA PROCESSING SECTION ----------
 
-# ---------- DATA PROCESSING SECTION ----------
-
 # Load the original Excel file
 file_path = "change_over_test.xlsx"
 df = pd.read_excel(file_path)
@@ -42,9 +40,11 @@ for idx, row in df.iterrows():
     last_part_code = row['last part code']
     duration = row['subtotal.co']
     current_month = row['month']
+    changeover_date = row['date']
+    shift = row['shift']
 
     if pd.isna(last_part_code):
-        continue  # Skip rows where we don't have a previous part reference
+        continue
 
     if duration == 720 and machine == prev_machine and last_part_code == from_part and part_code == to_part:
         accumulated_duration += duration
@@ -56,7 +56,9 @@ for idx, row in df.iterrows():
             'machine': prev_machine,
             'from product': from_part,
             'to product': to_part,
-            'changeover duration (min)': accumulated_duration
+            'changeover duration (min)': accumulated_duration,
+            'date': last_date,
+            'shift': last_shift
         })
 
     prev_machine = machine
@@ -64,30 +66,35 @@ for idx, row in df.iterrows():
     to_part = part_code
     accumulated_duration = duration
     month = current_month
+    last_date = changeover_date
+    last_shift = shift
 
-# Append the last block
 if accumulated_duration > 0:
     summary_data.append({
         'month': month,
         'machine': prev_machine,
         'from product': from_part,
         'to product': to_part,
-        'changeover duration (min)': accumulated_duration
+        'changeover duration (min)': accumulated_duration,
+        'date': last_date,
+        'shift': last_shift
     })
 
 summary_df = pd.DataFrame(summary_data)
+
+# Add hover info
+summary_df['hover_info'] = (
+    "From: " + summary_df['from product'].astype(str) +
+    "<br>To: " + summary_df['to product'].astype(str) +
+    "<br>Date: " + summary_df['date'].astype(str) +
+    "<br>Shift: " + summary_df['shift'].astype(str) +
+    "<br>Duration: " + summary_df['changeover duration (min)'].astype(str) + " min"
+)
 
 # Monthly summary (in hours)
 monthly_summary = summary_df.groupby(['month', 'machine'], as_index=False).agg(
     total_changeover_time_hr=('changeover duration (min)', lambda x: round(x.sum() / 60, 2)),
     average_changeover_time_hr=('changeover duration (min)', lambda x: round(x.mean() / 60, 2))
-)
-# Add hover text to each changeover row
-summary_df['hover_info'] = (
-    "From: " + summary_df['from product'].astype(str) +
-    "<br>To: " + summary_df['to product'].astype(str) +
-    "<br>Month: " + summary_df['month'].astype(str) +
-    "<br>Duration: " + summary_df['changeover duration (min)'].astype(str) + " min"
 )
 
 # ---------- STREAMLIT APP SECTION ----------
@@ -95,18 +102,15 @@ summary_df['hover_info'] = (
 st.set_page_config(page_title="Changeover Dashboard", layout="wide")
 st.title("📊 Changeover Summary Dashboard")
 
-# Sidebar filters
 st.sidebar.header("🔎 Filters")
 
-# Machine filter
 machines = sorted(summary_df['machine'].dropna().unique())
 selected_machine = st.sidebar.selectbox("Select Machine", options=["All"] + machines)
 
-# Month filter
 months = sorted(summary_df['month'].dropna().unique())
 selected_month = st.sidebar.selectbox("Select Month", options=["All"] + months)
 
-# Apply filters to summary_df
+# Filter data
 filtered_summary = summary_df.copy()
 filtered_monthly = monthly_summary.copy()
 
@@ -118,13 +122,16 @@ if selected_month != "All":
     filtered_summary = filtered_summary[filtered_summary['month'] == selected_month]
     filtered_monthly = filtered_monthly[filtered_monthly['month'] == selected_month]
 
-# --- Charts ---
+# --- Monthly Charts ---
 st.subheader("🔁 Total Changeover Time (Hours) by Machine")
 fig_total = px.bar(
     filtered_monthly,
     x="machine", y="total_changeover_time_hr",
-    color="machine", title="Total Changeover Time per Machine",
-    text="total_changeover_time_hr"
+    color="machine",
+    title="Total Changeover Time per Machine",
+    text="total_changeover_time_hr",
+    hover_name="machine",
+    hover_data={"total_changeover_time_hr": True}
 )
 st.plotly_chart(fig_total, use_container_width=True)
 
@@ -132,16 +139,32 @@ st.subheader("⏱️ Average Changeover Time (Hours) by Machine")
 fig_avg = px.bar(
     filtered_monthly,
     x="machine", y="average_changeover_time_hr",
-    color="machine", title="Average Changeover Time per Machine",
-    text="average_changeover_time_hr"
+    color="machine",
+    title="Average Changeover Time per Machine",
+    text="average_changeover_time_hr",
+    hover_name="machine",
+    hover_data={"average_changeover_time_hr": True}
 )
 st.plotly_chart(fig_avg, use_container_width=True)
 
-# --- Optional: Show Table ---
+# --- Detailed Event Chart ---
+st.subheader("🔍 Product-Level Changeovers")
+fig_product = px.bar(
+    filtered_summary,
+    x="machine", y="changeover duration (min)",
+    color="machine",
+    title="Changeover Durations by Product Change",
+    text="changeover duration (min)",
+    hover_name="machine",
+    hover_data={"hover_info": True},
+)
+st.plotly_chart(fig_product, use_container_width=True)
+
+# --- Show Table ---
 st.subheader("📋 Changeover Event Table")
 st.dataframe(filtered_summary)
 
-# --- Optional: Download ---
+# --- Download ---
 st.download_button(
     "Download Filtered Data as CSV",
     data=filtered_summary.to_csv(index=False).encode(),
