@@ -5,6 +5,8 @@ import os
 
 # ---------- DATA PROCESSING SECTION ----------
 
+# ---------- DATA PROCESSING SECTION ----------
+
 # Load the original Excel file
 file_path = "change_over_test.xlsx"
 df = pd.read_excel(file_path)
@@ -14,14 +16,22 @@ df.columns = df.columns.str.strip().str.lower()
 df['date'] = pd.to_datetime(df['date'])
 df['month'] = df['date'].dt.to_period('M').astype(str)
 
-# Filter only CNC workshop (optional – remove if not needed)
+# Optional: filter workshop
 if 'workshop' in df.columns:
     df = df[df['workshop'].str.upper() == 'CNC']
 
-# Sort for processing
+# Sort data for reference
+df = df.sort_values(by=['machine', 'date', 'shift']).reset_index(drop=True)
+
+# Create 'last part code' manually
+df['last part code'] = None
+for i in range(1, len(df)):
+    if df.loc[i, 'machine'] == df.loc[i - 1, 'machine'] and df.loc[i - 1, 'subtotal.co'] == 0:
+        df.loc[i, 'last part code'] = df.loc[i - 1, 'part code']
+
+# Now filter and generate changeover summary
 df = df.sort_values(by=['month', 'machine', 'date', 'shift']).reset_index(drop=True)
 
-# Generate changeover event summary
 summary_data = []
 prev_machine, from_part, to_part, month = None, None, None, None
 accumulated_duration = 0
@@ -32,6 +42,9 @@ for idx, row in df.iterrows():
     last_part_code = row['last part code']
     duration = row['subtotal.co']
     current_month = row['month']
+
+    if pd.isna(last_part_code):
+        continue  # Skip rows where we don't have a previous part reference
 
     if duration == 720 and machine == prev_machine and last_part_code == from_part and part_code == to_part:
         accumulated_duration += duration
@@ -52,7 +65,7 @@ for idx, row in df.iterrows():
     accumulated_duration = duration
     month = current_month
 
-# Append the last changeover
+# Append the last block
 if accumulated_duration > 0:
     summary_data.append({
         'month': month,
@@ -62,16 +75,13 @@ if accumulated_duration > 0:
         'changeover duration (min)': accumulated_duration
     })
 
-# Convert to DataFrame
 summary_df = pd.DataFrame(summary_data)
 
-# Calculate monthly summary
+# Monthly summary (in hours)
 monthly_summary = summary_df.groupby(['month', 'machine'], as_index=False).agg(
     total_changeover_time_hr=('changeover duration (min)', lambda x: round(x.sum() / 60, 2)),
     average_changeover_time_hr=('changeover duration (min)', lambda x: round(x.mean() / 60, 2))
 )
-
-# ---------- STREAMLIT APP SECTION ----------
 
 # ---------- STREAMLIT APP SECTION ----------
 
