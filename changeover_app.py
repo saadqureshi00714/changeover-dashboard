@@ -73,19 +73,33 @@ monthly_summary = summary_df.groupby(['month', 'machine'], as_index=False).agg(
 
 # ---------- STREAMLIT APP SECTION ----------
 
+# ---------- STREAMLIT APP SECTION ----------
+
 st.set_page_config(page_title="Changeover Dashboard", layout="wide")
 st.title("📊 Changeover Summary Dashboard")
 
+# Sidebar filters
+st.sidebar.header("🔎 Filters")
+
 # Machine filter
 machines = sorted(summary_df['machine'].dropna().unique())
-selected_machine = st.selectbox("Select a Machine", options=["All"] + machines)
+selected_machine = st.sidebar.selectbox("Select Machine", options=["All"] + machines)
 
-# Filter data
+# Month filter
+months = sorted(summary_df['month'].dropna().unique())
+selected_month = st.sidebar.selectbox("Select Month", options=["All"] + months)
+
+# Apply filters to summary_df
 filtered_summary = summary_df.copy()
 filtered_monthly = monthly_summary.copy()
+
 if selected_machine != "All":
-    filtered_summary = summary_df[summary_df['machine'] == selected_machine]
-    filtered_monthly = monthly_summary[monthly_summary['machine'] == selected_machine]
+    filtered_summary = filtered_summary[filtered_summary['machine'] == selected_machine]
+    filtered_monthly = filtered_monthly[filtered_monthly['machine'] == selected_machine]
+
+if selected_month != "All":
+    filtered_summary = filtered_summary[filtered_summary['month'] == selected_month]
+    filtered_monthly = filtered_monthly[filtered_monthly['month'] == selected_month]
 
 # --- Charts ---
 st.subheader("🔁 Total Changeover Time (Hours) by Machine")
@@ -112,8 +126,8 @@ st.dataframe(filtered_summary)
 
 # --- Optional: Download ---
 st.download_button(
-    "Download Event Data as Excel",
+    "Download Filtered Data as CSV",
     data=filtered_summary.to_csv(index=False).encode(),
-    file_name="changeover_event_summary.csv",
+    file_name="changeover_filtered_summary.csv",
     mime="text/csv"
 )
