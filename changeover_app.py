@@ -3,8 +3,8 @@ import streamlit as st
 import plotly.express as px
 
 # Load the data
-event_df = pd.read_excel("C:/Users/SaadQureshi/Documents/oee-changeovers/changeover_event_summary.xlsx")
-monthly_df = pd.read_excel("C:/Users/SaadQureshi/Documents/oee-changeovers/monthly_machine_summary.xlsx")
+event_df = pd.read_excel("changeover_event_summary.xlsx")
+monthly_df = pd.read_excel("monthly_machine_summary.xlsx")
 
 # Page title
 st.title("Changeover Summary Dashboard")
