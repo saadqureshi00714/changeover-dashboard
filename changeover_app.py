@@ -82,6 +82,13 @@ monthly_summary = summary_df.groupby(['month', 'machine'], as_index=False).agg(
     total_changeover_time_hr=('changeover duration (min)', lambda x: round(x.sum() / 60, 2)),
     average_changeover_time_hr=('changeover duration (min)', lambda x: round(x.mean() / 60, 2))
 )
+# Add hover text to each changeover row
+summary_df['hover_info'] = (
+    "From: " + summary_df['from product'].astype(str) +
+    "<br>To: " + summary_df['to product'].astype(str) +
+    "<br>Month: " + summary_df['month'].astype(str) +
+    "<br>Duration: " + summary_df['changeover duration (min)'].astype(str) + " min"
+)
 
 # ---------- STREAMLIT APP SECTION ----------
 
