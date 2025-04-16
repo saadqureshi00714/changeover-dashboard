@@ -122,3 +122,4 @@ fig3 = px.line(
     labels={'duration_hr': 'Downtime (hr)', 'downtime_type': 'Category'}
 )
 st.plotly_chart(fig3, use_container_width=True)
+
