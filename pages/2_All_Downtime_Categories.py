@@ -18,9 +18,6 @@ df['month'] = df['date'].dt.to_period('M').astype(str)
 # Filter only valid machines if needed
 df = df[df['machine'].notna()]
 
-# Show available columns for debugging (optional)
-# st.write("Available columns:", df.columns.tolist())
-
 # Define downtime categories and their labels with matching lowercase column names
 downtime_columns = {
     'subtotal-manpower': 'Manpower',
@@ -39,10 +36,18 @@ downtime_labels = {col: downtime_columns[col] for col in available_cols}
 
 # Sidebar filters
 machines = sorted(df['machine'].dropna().unique())
+months = sorted(df['month'].dropna().unique())
+weeks = sorted(df['week'].dropna().unique())
 selected_machine = st.sidebar.selectbox("Select Machine", ["All"] + machines)
+selected_month = st.sidebar.selectbox("Select Month", ["All"] + months)
+selected_week = st.sidebar.selectbox("Select Week", ["All"] + weeks)
 
 if selected_machine != "All":
     df = df[df['machine'] == selected_machine]
+if selected_month != "All":
+    df = df[df['month'] == selected_month]
+if selected_week != "All":
+    df = df[df['week'] == selected_week]
 
 # Melt data for category-wise plots
 df_melted = df.melt(
