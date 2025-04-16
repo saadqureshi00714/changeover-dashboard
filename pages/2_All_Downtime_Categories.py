@@ -18,9 +18,12 @@ df['month'] = df['date'].dt.to_period('M').astype(str)
 # Filter only valid machines if needed
 df = df[df['machine'].notna()]
 
-# Define downtime categories and their labels
+# Show available columns for debugging (optional)
+# st.write("Available columns:", df.columns.tolist())
+
+# Define downtime categories and their labels with matching lowercase column names
 downtime_columns = {
-    'subtotal.manpower': 'Manpower',
+    'subtotal-manpower': 'Manpower',
     'subtotal.pd': 'Planned',
     'subtotal.mb': 'Machine Breakdown',
     'subtotal.cb': 'Tool Breakdown',
@@ -29,6 +32,10 @@ downtime_columns = {
     'subtotal.wd': 'Warehousing Issue',
     'subtotal.o': 'Other'
 }
+
+# Ensure all expected columns are in the dataframe
+available_cols = [col for col in downtime_columns if col in df.columns]
+downtime_labels = {col: downtime_columns[col] for col in available_cols}
 
 # Sidebar filters
 machines = sorted(df['machine'].dropna().unique())
@@ -40,10 +47,10 @@ if selected_machine != "All":
 # Melt data for category-wise plots
 df_melted = df.melt(
     id_vars=['machine', 'date', 'week', 'month'],
-    value_vars=list(downtime_columns.keys()),
+    value_vars=list(downtime_labels.keys()),
     var_name='downtime_type', value_name='duration_min'
 )
-df_melted['downtime_type'] = df_melted['downtime_type'].map(downtime_columns)
+df_melted['downtime_type'] = df_melted['downtime_type'].map(downtime_labels)
 df_melted['duration_hr'] = df_melted['duration_min'] / 60
 
 # --- Chart 1: Total downtime by category + machine ---
