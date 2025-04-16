@@ -72,8 +72,9 @@ df_melted = df.melt(
 df_melted['downtime_type'] = df_melted['downtime_type'].map(downtime_labels)
 df_melted['duration_hr'] = df_melted['duration_min'] / 60
 
-# Translator instance
+# Translator instance with cache
 translator = Translator()
+translation_cache = {}
 
 # Add combined translated comments column for hover info
 def gather_and_translate_comments(row):
@@ -89,10 +90,14 @@ def gather_and_translate_comments(row):
                 if pd.notna(comment_val):
                     comments.append(str(comment_val))
     comment_text = "; ".join(comments)
+    if comment_text in translation_cache:
+        return translation_cache[comment_text]
     try:
         translated = translator.translate(comment_text, src='zh-cn', dest='en').text
+        translation_cache[comment_text] = translated
         return translated
     except:
+        translation_cache[comment_text] = comment_text
         return comment_text
 
 df_melted['comments'] = df_melted.apply(gather_and_translate_comments, axis=1)
